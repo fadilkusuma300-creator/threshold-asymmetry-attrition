@@ -1,10 +1,10 @@
 """
-论文配图生成脚本（出版质量）。
+Publication-quality figure generation script.
 
-  Figure 2: 三条件对照实验 F1 对比柱状图（IBM + Indian 数据集）
-  Figure 3: 阈值敏感性曲线（F1、Precision、Recall、G-Mean）
+  Figure 2: Three-condition controlled comparison bar chart (IBM + Indian datasets)
+  Figure 3: Threshold sensitivity curves (F1, Precision, Recall, G-Mean)
 
-用法：
+Usage:
   python plot_figures_revised.py
 """
 import matplotlib

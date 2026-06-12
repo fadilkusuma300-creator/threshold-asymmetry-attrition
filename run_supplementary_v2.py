@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
-补充基线实验 v2：复现近年文献中的方法。
+Supplementary baselines v2: reproduce methods from recent literature.
 
-  - HistGradientBoosting + SMOTE（Al-Ali et al., Scientific Reports, 2026）
-  - XGBoost + RFE（Fang & Zhang, IEEE Access, 2024）
+  - HistGradientBoosting + SMOTE (Al-Ali et al., Scientific Reports, 2026)
+  - XGBoost + RFE (Fang & Zhang, IEEE Access, 2024)
 
-使用与 run_final.py 完全相同的数据、预处理、交叉验证折、校准和阈值优化流程。
+Uses the exact same data, preprocessing, CV folds, calibration,
+and threshold optimization as run_final.py.
 
-用法：
+Usage:
   python run_supplementary_v2.py --dataset ibm
   python run_supplementary_v2.py --dataset indian
 """

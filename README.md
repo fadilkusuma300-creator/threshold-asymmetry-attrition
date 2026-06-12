@@ -1,119 +1,124 @@
-# Threshold Asymmetry in Employee Attrition Prediction
+# 🔬 Threshold Asymmetry in Employee Attrition Prediction
 
-本仓库包含论文《员工离职预测模型比较中阈值非对称性的影响与量化评估》的全部实验代码。
+> Quantifying how asymmetric classification thresholds inflate reported ensemble advantages in HR attrition model comparisons.
 
-## 研究问题
+---
 
-在 HR 离职预测的模型比较研究中，集成方法常被报告为优于单一分类器。然而，现有比较实验普遍存在**阈值条件非对称**的问题：集成方法使用优化阈值 τ*，而基线方法使用默认阈值 0.50。本文通过三组受控对照实验，量化了这种非对称性对模型比较结论的扭曲程度。
+## 📋 Overview
 
-## 核心发现
+In HR attrition prediction, ensemble methods are routinely reported to outperform single classifiers. However, existing comparison studies commonly suffer from **threshold asymmetry**: the proposed ensemble uses an optimized threshold τ*, while baselines are stuck with the default τ = 0.50.
 
-- 异构集成（RF + XGBoost + LightGBM + SVM）在三种阈值条件下均显著优于 SMOTE+LightGBM
-- 公平阈值条件下 F1 差距仅 0.022，非对称条件下扩大至 0.134（放大约 6 倍）
-- 约 84% 的报告差距可归因于阈值非对称设置，而非模型架构本身
-- 阈值优化是消融实验中贡献最大的单一组件（ΔF1 = −0.089），远超异构集成设计（ΔF1 = −0.034）和特征工程（ΔF1 = −0.012）
+This repository contains the full experimental code for a controlled study that quantifies this methodological blind spot.
 
-## 实验设计
+## 🎯 Key Findings
 
-### 三条件对照实验
+- 🏆 Heterogeneous ensemble (RF + XGBoost + LightGBM + SVM) **significantly outperforms** SMOTE+LightGBM under all three threshold conditions
+- 📊 Fair-threshold F1 gap: only **0.022** → Asymmetric gap: **0.134** (≈ **6× inflation**)
+- ⚠️ ~**84%** of the reported gap is attributable to threshold asymmetry, not model architecture
+- 🔍 Threshold optimization is the **single most impactful component** (ΔF1 = −0.089), far exceeding ensemble design (ΔF1 = −0.034) and feature engineering (ΔF1 = −0.012)
 
-| 条件 | 集成方法阈值 | 基线方法阈值 | 检验目的 |
-|------|-------------|-------------|---------|
-| 条件一（等阈值） | τ = 0.50 | τ = 0.50 | 原生分类能力差异 |
-| 条件二（公平阈值） | τ*（各自最优） | τ*（各自最优） | 公平条件下的架构优势 |
-| 条件三（非对称阈值） | τ*（仅集成优化） | τ = 0.50 | 复现文献中的常见做法 |
+## 🧪 Experimental Design
 
-### 数据集
+### Three-Condition Controlled Comparison
 
-| 数据集 | 样本数 | 不平衡比率 | 用途 |
-|--------|--------|-----------|------|
-| IBM HR Attrition | 1,470 | 5.2:1 | 主实验 |
-| Indian HR Attrition | 5,000 | 1.7:1 | 泛化验证 |
+| Condition | Ensemble Threshold | Baseline Threshold | Purpose |
+|-----------|-------------------|-------------------|---------|
+| ① Equal Threshold | τ = 0.50 | τ = 0.50 | Raw classification ability |
+| ② Fair Threshold | τ* (own optimal) | τ* (own optimal) | Fair architectural advantage |
+| ③ Asymmetric Threshold | τ* (only ensemble) | τ = 0.50 | Reproduce common literature practice |
 
-### 评估协议
+### 📦 Datasets
 
-- 5×5 重复分层交叉验证（共 25 次测量）
-- Nadeau-Bengio 修正重采样 t 检验（α = 0.05）
-- 评价指标：AUC-ROC、F1、Precision、Recall、G-Mean、Brier Score
+| Dataset | Samples | Imbalance Ratio | Role |
+|---------|---------|----------------|------|
+| IBM HR Attrition | 1,470 | 5.2 : 1 | Primary experiment |
+| Indian HR Attrition | 5,000 | 1.7 : 1 | Generalization validation |
 
-## 项目结构
+### 📐 Evaluation Protocol
+
+- **5×5 repeated stratified cross-validation** (25 measurements total)
+- **Nadeau-Bengio corrected resampled t-test** (α = 0.05)
+- **Metrics**: AUC-ROC, F1, Precision, Recall, G-Mean, Brier Score
+
+## 📁 Project Structure
 
 ```
-├── config.py                    # 全局配置（路径、超参、随机种子）
-├── data_loader.py               # 数据集加载与缓存
-├── preprocessing.py             # 特征工程（交互特征、标准化、聚类距离）
-├── models.py                    # 模型定义（基线方法、异构集成、阈值优化）
+├── config.py                    # Global config (paths, hyperparams, random seed)
+├── data_loader.py               # Dataset loading utilities
+├── preprocessing.py             # Feature engineering (interactions, scaling, clustering)
+├── models.py                    # Model definitions (baselines, ensemble, threshold opt.)
 │
-├── run_final.py                 # 主实验脚本（三条件对照 + 消融 + 校准对比）
-├── run_supplementary_v2.py      # 补充基线（文献方法复现）
-├── plot_figures_revised.py      # 论文图表生成
+├── run_final.py                 # ⭐ Main experiment (3-condition comparison + ablation)
+├── run_supplementary_v2.py      # Supplementary baselines (literature methods)
+├── plot_figures_revised.py      # Publication-quality figure generation
 │
-├── data/                        # 数据集
+├── data/                        # Datasets
 │   ├── WA_Fn-UseC_-HR-Employee-Attrition.csv
 │   ├── hr_attrition_indian.csv
 │   └── ziya07_attrition.csv
 │
-├── results/                     # 实验结果输出目录
-│   └── figures/                 # 论文配图
+├── results/                     # Output directory
+│   └── figures/                 # Paper figures (PDF + PNG + SVG)
 │
-└── requirements.txt             # Python 依赖
+└── requirements.txt             # Python dependencies
 ```
 
-## 环境要求
+## 🚀 Getting Started
 
-- Python >= 3.11
-- 依赖见 `requirements.txt`
+### Prerequisites
+
+- Python ≥ 3.11
+
+### Installation
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## 复现实验
+### ▶️ Run Experiments
 
-### 主实验（三条件对照 + 消融）
-
+**Main experiment** (three-condition comparison + ablation + calibration):
 ```bash
 python run_final.py --dataset ibm
 python run_final.py --dataset indian
 ```
 
-支持的数据集参数：`ibm`、`indian`、`ziya07`
+Supported datasets: `ibm`, `indian`, `ziya07`
 
-### 补充基线实验
-
+**Supplementary baselines** (literature method reproduction):
 ```bash
 python run_supplementary_v2.py --dataset ibm
 python run_supplementary_v2.py --dataset indian
 ```
 
-### 生成论文图表
-
+**Generate paper figures**:
 ```bash
 python plot_figures_revised.py
 ```
 
-## 方法概述
+## 🏗️ Method Summary
 
-### 异构集成
+### Heterogeneous Ensemble
 
-由四种基学习器组成的等权软投票集成：
-- **Random Forest**：Bootstrap 采样 + 随机特征子集
-- **XGBoost**：按层生长梯度提升
-- **LightGBM**：按叶生长梯度提升
-- **SVM**：RBF 核映射（与树模型决策边界互补）
+Equal-weight soft voting of four complementary base learners:
 
-所有基学习器均采用代价敏感设置（class_weight / scale_pos_weight）。
+| Base Learner | Decision Boundary | Cost-Sensitive Mechanism |
+|-------------|-------------------|--------------------------|
+| Random Forest | Axis-aligned piecewise | `class_weight='balanced'` |
+| XGBoost | Axis-aligned (level-wise) | `scale_pos_weight=IR` |
+| LightGBM | Axis-aligned (leaf-wise) | `scale_pos_weight=IR` |
+| SVM (RBF) | Smooth curved surface | `class_weight='balanced'` |
 
-### 阈值优化
+### Threshold Optimization
 
-在内部验证集上搜索最优分类阈值：
+Adaptive search on internal validation set:
 
 $$\tau^* = \arg\max_{\tau} \left[ 0.55 \times F1(\tau) + 0.45 \times G\text{-}Mean(\tau) \right]$$
 
-### 概率校准
+### Probability Calibration
 
-对集成概率输出应用等距回归（Isotonic Regression）校准。
+Isotonic Regression calibration applied to ensemble probability outputs.
 
-## 许可证
+## 📄 License
 
 MIT License

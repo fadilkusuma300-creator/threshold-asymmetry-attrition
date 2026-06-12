@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-主实验脚本：阈值非对称性对照实验（最终版）。
+Main experiment script: threshold asymmetry controlled comparison (final version).
 
-实验设计：
-  - 5×5 重复分层交叉验证（共 25 次测量）
-  - 等距回归（Isotonic Regression）概率校准
-  - 基于 OOF 预测的阈值搜索（避免过拟合）
-  - 等权软投票异构集成（RF + XGBoost + LightGBM + SVM）
+Experimental design:
+  - 5×5 repeated stratified cross-validation (25 measurements total)
+  - Isotonic Regression probability calibration
+  - Threshold search on OOF predictions (avoids overfitting)
+  - Equal-weight soft voting heterogeneous ensemble (RF + XGBoost + LightGBM + SVM)
 
-三组对照条件：
-  条件一（等阈值）：所有方法 τ = 0.50
-  条件二（公平阈值）：各方法使用各自最优阈值 τ*
-  条件三（非对称阈值）：仅集成使用 τ*，基线保持 τ = 0.50
+Three controlled conditions:
+  Condition 1 (Equal Threshold): all methods use τ = 0.50
+  Condition 2 (Fair Threshold): each method uses its own optimal threshold τ*
+  Condition 3 (Asymmetric Threshold): only ensemble uses τ*, baselines keep τ = 0.50
 
-用法：
+Usage:
   python run_final.py --dataset ibm
   python run_final.py --dataset indian
 """
@@ -42,12 +42,12 @@ from imblearn.over_sampling import SMOTE
 from scipy import stats
 
 # ============================================================
-# 全局配置
+# Global configuration
 # ============================================================
-RS = 42                # 全局随机种子
-N_SPLITS = 5           # 每重复的折数
-N_REPEATS = 5          # 重复次数（5×5 = 25 次测量）
-ALPHA = 0.55           # 阈值搜索目标函数权重：0.55×F1 + 0.45×G-Mean
+RS = 42                # Global random seed
+N_SPLITS = 5           # Folds per repetition
+N_REPEATS = 5          # Repetitions (5×5 = 25 measurements)
+ALPHA = 0.55           # Threshold search objective: 0.55×F1 + 0.45×G-Mean
 DATA_DIR = Path("../data")
 RESULTS_DIR = Path("../results")
 RESULTS_DIR.mkdir(exist_ok=True)
@@ -61,11 +61,11 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 
 class HeteroEnsemble(BaseEstimator, ClassifierMixin):
     """
-    异构集成：RF + XGBoost + LightGBM + SVM，等权软投票。
+    Heterogeneous ensemble: RF + XGBoost + LightGBM + SVM, equal-weight soft voting.
 
-    所有基学习器均采用代价敏感设置：
-      - RF / SVM：class_weight='balanced'
-      - XGBoost / LightGBM：scale_pos_weight=不平衡比率
+    All base learners use cost-sensitive settings:
+      - RF / SVM: class_weight='balanced'
+      - XGBoost / LightGBM: scale_pos_weight=imbalance_ratio
     """
 
     def __init__(self, ir=1.0, rs=RS):
@@ -137,7 +137,7 @@ def make_catboost_smote(rs=RS):
 
 
 # ============================================================
-# 评价与阈值优化工具函数
+# Evaluation & threshold optimization utilities
 # ============================================================
 def gmean_score(y, yp):
     cm = confusion_matrix(y, yp)
@@ -160,7 +160,7 @@ def evaluate(y, yp, yprob):
 
 
 def find_tau(y, prob, grid=np.arange(0.05, 0.96, 0.01)):
-    """在验证集上搜索最优分类阈值，目标函数：α×F1 + (1-α)×G-Mean。"""
+    """Search for optimal classification threshold on validation set. Objective: α×F1 + (1-α)×G-Mean."""
     """Find optimal threshold maximizing α*F1 + (1-α)*G-Mean."""
     best_tau, best_s = 0.50, -1.0
     for t in grid:
@@ -205,8 +205,8 @@ def pos_prob(proba):
 
 def nadeau_bengio_test(scores1, scores2, n_repeats=N_REPEATS, n_folds=N_SPLITS):
     """
-    Nadeau-Bengio 修正重采样 t 检验。
-    针对交叉验证中训练集与测试集重叠导致的方差低估问题进行修正。
+    Nadeau-Bengio corrected resampled t-test.
+    Corrects for variance underestimation due to train/test overlap in cross-validation.
     """
     """
     Corrected paired t-test for repeated k-fold cross-validation.
@@ -260,7 +260,7 @@ def nadeau_bengio_test(scores1, scores2, n_repeats=N_REPEATS, n_folds=N_SPLITS):
 
 
 # ============================================================
-# 数据加载与预处理
+# Data loading & preprocessing
 # ============================================================
 def load_and_preprocess(name):
     """Load and preprocess dataset. Supports: IBM, ziya07, Indian"""
@@ -319,7 +319,7 @@ def load_and_preprocess(name):
 
 
 def add_cluster_features(X_train, X_test):
-    """K-Means 聚类距离特征：将样本到各聚类中心的距离作为附加连续特征。"""
+    """K-Means clustering distance features: append distances to cluster centroids as additional continuous features."""
     """Add K-Means cluster distance features (fit on train only)."""
     best_k, best_sil = 2, -1
     for k in range(2, 7):
@@ -357,7 +357,7 @@ def generate_synthetic_dataset(n=5000, ir=5.5, n_features=30, rs=RS):
 
 
 # ============================================================
-# 主实验：三条件对照 + 消融 + 校准对比
+# Main experiment: 3-condition comparison + ablation + calibration
 # ============================================================
 def run_experiment(X, y, name, ir):
     t0 = time.time()
@@ -668,7 +668,7 @@ def run_experiment(X, y, name, ir):
 
 
 # ============================================================
-# 结果汇总输出
+# Results summary output
 # ============================================================
 def print_summary(results):
     name = results['dataset']
@@ -755,15 +755,15 @@ def print_summary(results):
 
 
 # ============================================================
-# 主入口
+# Entry point
 # ============================================================
 if __name__ == "__main__":
     print("="*70, flush=True)
-    print("  员工离职预测 — 阈值非对称性对照实验", flush=True)
-    print(f"  {N_REPEATS}×{N_SPLITS} = {N_REPEATS*N_SPLITS} 次测量 / 数据集", flush=True)
+    print("  Employee Attrition — Threshold Asymmetry Experiment", flush=True)
+    print(f"  {N_REPEATS}×{N_SPLITS} = {N_REPEATS*N_SPLITS} measurements per dataset", flush=True)
     print("="*70, flush=True)
 
-    # ---- 数据集 1: IBM HR Attrition ----
+    # ---- Dataset 1: IBM HR Attrition ----
     result1 = load_and_preprocess('IBM')
     if result1:
         X1, y1, nfeat1, ir1 = result1

@@ -1,13 +1,13 @@
 """
-模型定义模块：基线方法与异构集成。
+Model definitions: baselines and heterogeneous ensemble.
 
-包含：
-  - G-Mean 计算、评价指标汇总
-  - 阈值优化（自适应搜索最优分类阈值）
-  - 基线模型：LR、SVM、RF、XGBoost、LightGBM
-  - 异构集成：RF + XGBoost + LightGBM + SVM（等权软投票）
-  - SMOTE / ADASYN 增强基线
-  - CatBoost + SMOTE、AdaBoost + ADASYN、GradientBoosting + RFE
+Contains:
+  - G-Mean computation, evaluation metrics
+  - Threshold optimization (adaptive search for optimal classification threshold)
+  - Baseline models: LR, SVM, RF, XGBoost, LightGBM
+  - Heterogeneous ensemble: RF + XGBoost + LightGBM + SVM (equal-weight soft voting)
+  - SMOTE / ADASYN augmented baselines
+  - CatBoost + SMOTE, AdaBoost + ADASYN, GradientBoosting + RFE
 """
 import numpy as np
 from sklearn.linear_model import LogisticRegression
@@ -33,10 +33,10 @@ from config import RANDOM_STATE
 
 
 # ============================================================
-# 评价指标
+# Evaluation metrics
 # ============================================================
 def g_mean_score(y_true, y_pred):
-    """G-Mean：灵敏度与特异度的几何平均，衡量两类分类均衡性。"""
+    """G-Mean: geometric mean of sensitivity and specificity."""
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
     sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0
     specificity = tn / (tn + fp) if (tn + fp) > 0 else 0
@@ -44,7 +44,7 @@ def g_mean_score(y_true, y_pred):
 
 
 def evaluate(y_true, y_pred, y_prob):
-    """返回完整评价指标字典：AUC-ROC、F1、精确率、召回率、G-Mean、Brier。"""
+    """Return full evaluation metrics: AUC-ROC, F1, Precision, Recall, G-Mean, Brier."""
     return {
         "AUC-ROC": roc_auc_score(y_true, y_prob),
         "F1": f1_score(y_true, y_pred),
@@ -56,23 +56,23 @@ def evaluate(y_true, y_pred, y_prob):
 
 
 # ============================================================
-# 阈值优化
+# Threshold optimization
 # ============================================================
 def predict_with_threshold(y_prob, threshold=0.5):
-    """按指定阈值将概率转换为二分类预测。"""
+    """Convert probabilities to binary predictions using a given threshold."""
     return (np.asarray(y_prob) >= threshold).astype(int)
 
 
 def find_optimal_threshold(y_true, y_prob, objective="balanced"):
     """
-    在 [0.05, 0.95] 范围内搜索最优分类阈值。
+    Search for the optimal classification threshold in [0.05, 0.95].
 
     Parameters
     ----------
     objective : str
-        'f1'      — 最大化 F1
-        'gmean'   — 最大化 G-Mean
-        'balanced' — 加权组合（默认）
+        'f1'       — maximize F1
+        'gmean'    — maximize G-Mean
+        'balanced' — weighted combination (default)
     """
     thresholds = np.linspace(0.05, 0.95, 181)
     best_threshold = 0.5
@@ -87,7 +87,7 @@ def find_optimal_threshold(y_true, y_prob, objective="balanced"):
         elif objective == "gmean":
             score = metrics["G-Mean"]
         else:
-            # 默认：F1 + G-Mean + AUC 加权组合
+            # Default: weighted combination of F1 + G-Mean + AUC
             score = 0.45 * metrics["F1"] + 0.35 * metrics["G-Mean"] + 0.20 * metrics["AUC-ROC"]
 
         if score > best_score:
@@ -99,10 +99,10 @@ def find_optimal_threshold(y_true, y_prob, objective="balanced"):
 
 
 # ============================================================
-# 基线模型
+# Baseline models
 # ============================================================
 def get_baseline_models():
-    """返回基线分类器字典（LR、SVM、RF、XGBoost、LightGBM）。"""
+    """Return baseline classifier dict (LR, SVM, RF, XGBoost, LightGBM)."""
     return {
         "LR": LogisticRegression(
             max_iter=1000, random_state=RANDOM_STATE, class_weight="balanced"
@@ -118,7 +118,7 @@ def get_baseline_models():
         "XGBoost": XGBClassifier(
             n_estimators=200, random_state=RANDOM_STATE,
             use_label_encoder=False, eval_metric="logloss",
-            scale_pos_weight=5,  # 近似不平衡比率
+            scale_pos_weight=5,  # approximate imbalance ratio
             n_jobs=-1, verbosity=0,
         ),
         "LightGBM": LGBMClassifier(
@@ -129,7 +129,7 @@ def get_baseline_models():
 
 
 # ============================================================
-# 异构集成（VotingClassifier 软投票）
+# Heterogeneous ensemble (VotingClassifier, soft voting)
 # ============================================================
 def build_stacking_ensemble(
     cost_sensitive: bool = False,
@@ -141,14 +141,15 @@ def build_stacking_ensemble(
     svm_C=1.0,
 ):
     """
-    构建异构集成：RF + XGBoost + LightGBM (+ 可选 SVM)，等权软投票。
+    Build heterogeneous ensemble: RF + XGBoost + LightGBM (+ optional SVM),
+    equal-weight soft voting.
 
     Parameters
     ----------
     cost_sensitive : bool
-        是否启用代价敏感设置（class_weight='balanced'）。
+        Enable cost-sensitive settings (class_weight='balanced').
     include_svm : bool
-        是否加入 SVM（RBF 核），与树模型决策边界互补。
+        Include SVM (RBF kernel) for complementary decision boundaries.
     """
     cw = "balanced" if cost_sensitive else None
     spw = scale_pos_weight if scale_pos_weight is not None else (5 if cost_sensitive else 1)
@@ -188,7 +189,7 @@ def build_stacking_ensemble(
 
 def build_stacking_ensemble_full(cost_sensitive: bool = False):
     """
-    构建 Stacking 集成（LogisticRegression 作为元学习器）。
+    Build Stacking ensemble (LogisticRegression as meta-learner).
     """
     cw = "balanced" if cost_sensitive else None
     spw = 5 if cost_sensitive else 1
@@ -220,10 +221,10 @@ def build_stacking_ensemble_full(cost_sensitive: bool = False):
 
 
 # ============================================================
-# SMOTE 增强基线
+# SMOTE-augmented baselines
 # ============================================================
 def train_global_smote_model(X_train, y_train, model_name="RF"):
-    """全局 SMOTE 过采样 + 单模型训练。"""
+    """Global SMOTE oversampling + single model training."""
     k = min(5, np.bincount(y_train).min() - 1)
     k = max(1, k)
     sm = SMOTE(random_state=RANDOM_STATE, k_neighbors=k)
@@ -236,10 +237,10 @@ def train_global_smote_model(X_train, y_train, model_name="RF"):
 
 
 # ============================================================
-# CatBoost + SMOTE（Raza et al., 2022）
+# CatBoost + SMOTE (Raza et al., 2022)
 # ============================================================
 def train_catboost_smote(X_train, y_train):
-    """SMOTE 过采样 + CatBoost 训练。"""
+    """SMOTE oversampling + CatBoost training."""
     if CatBoostClassifier is None:
         raise ImportError("catboost is not installed")
     k = min(5, np.bincount(y_train).min() - 1)
@@ -260,7 +261,7 @@ def train_catboost_smote(X_train, y_train):
 # AdaBoost + ADASYN
 # ============================================================
 def train_adaboost_adasyn(X_train, y_train):
-    """ADASYN 自适应过采样 + AdaBoost 训练。"""
+    """ADASYN adaptive oversampling + AdaBoost training."""
     n_minority = np.bincount(y_train).min()
     k = min(5, n_minority - 1)
     k = max(1, k)
@@ -268,7 +269,7 @@ def train_adaboost_adasyn(X_train, y_train):
         resampler = ADASYN(random_state=RANDOM_STATE, n_neighbors=k)
         X_res, y_res = resampler.fit_resample(X_train, y_train)
     except ValueError:
-        # ADASYN 失败时回退到 SMOTE
+        # Fall back to SMOTE if ADASYN fails
         sm = SMOTE(random_state=RANDOM_STATE, k_neighbors=k)
         X_res, y_res = sm.fit_resample(X_train, y_train)
 
@@ -283,10 +284,10 @@ def train_adaboost_adasyn(X_train, y_train):
 
 
 # ============================================================
-# GradientBoosting + RFE 特征选择（Fang & Zhang, 2024）
+# GradientBoosting + RFE (Fang & Zhang, 2024)
 # ============================================================
 def train_gb_rfe(X_train, y_train, n_features_ratio=0.8):
-    """递归特征消除（RFE）+ GradientBoosting 训练。"""
+    """Recursive Feature Elimination (RFE) + GradientBoosting training."""
     n_features = max(5, int(X_train.shape[1] * n_features_ratio))
 
     selector_model = GradientBoostingClassifier(
@@ -305,10 +306,10 @@ def train_gb_rfe(X_train, y_train, n_features_ratio=0.8):
 
 
 # ============================================================
-# SMOTE + Stacking 集成
+# SMOTE + Stacking ensemble
 # ============================================================
 def train_global_smote_stacking(X_train, y_train):
-    """全局 SMOTE 过采样 + Stacking 集成训练。"""
+    """Global SMOTE oversampling + Stacking ensemble training."""
     k = min(5, np.bincount(y_train).min() - 1)
     k = max(1, k)
     sm = SMOTE(random_state=RANDOM_STATE, k_neighbors=k)
